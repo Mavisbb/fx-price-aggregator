@@ -1,0 +1,46 @@
+api:
+  base_url: https://api.apilayer.com/exchangerates_data
+  base_currency: USD
+
+currencies:
+  - USD
+  - HKD
+  - CNH
+  - JPY
+  - CHF
+  - SGD
+  - CAD
+  - AUD
+  - NZD
+  - GBP
+  - EUR
+
+metals:
+  - XAU
+  - XAG
+
+history:
+  years_back: 5
+
+pairs:
+  # ---- USD majors ----
+  - {name: USDHKD, base: USD, quote: HKD, symbol: HKD, invert: false}
+  - {name: USDCNH, base: USD, quote: CNH, symbol: CNH, invert: false}
+  - {name: USDJPY, base: USD, quote: JPY, symbol: JPY, invert: false}
+  - {name: USDCHF, base: USD, quote: CHF, symbol: CHF, invert: false}
+  - {name: USDSGD, base: USD, quote: SGD, symbol: SGD, invert: false}
+  - {name: USDCAD, base: USD, quote: CAD, symbol: CAD, invert: false}
+
+  # ---- USD as quote (inverted) ----
+  - {name: AUDUSD, base: AUD, quote: USD, symbol: AUD, invert: true}
+  - {name: NZDUSD, base: NZD, quote: USD, symbol: NZD, invert: true}
+  - {name: GBPUSD, base: GBP, quote: USD, symbol: GBP, invert: true}
+  - {name: EURUSD, base: EUR, quote: USD, symbol: EUR, invert: true}
+
+  # ---- Metals ----
+  - {name: XAUUSD, base: XAU, quote: USD, symbol: XAU, invert: true}
+  - {name: XAGUSD, base: XAG, quote: USD, symbol: XAG, invert: true}
+
+intraday: 
+  seconds: 120
+
