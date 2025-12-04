@@ -62,8 +62,10 @@ GUI 分为四个主要 Tab，每个对应交易员日常需要的一个操作面
 
 ---
 
-## **TAB 2 — Dashboard **
-显示：
+## **TAB 2 — FX Dashboard**
+Dashboard用于展示最新货币对市场价格与昨天的fixing作对比。通过intraday.csv获取最新tick，daily.csv获取昨天的 fixing，计算 pips 变化与涨跌幅，实时更新界面。
+按`Refresh Dashboard` 会刷新数据表格，计算并更新所有货币对的最新价格
+内容包含：
 * Pair
 * 最新实时价格`Last Price` (from intraday.csv)
 * 昨天的Fixing`Prev Fixing`
@@ -74,184 +76,32 @@ GUI 分为四个主要 Tab，每个对应交易员日常需要的一个操作面
 * 涨跌幅`%Δ`
 * Bid / Ask（如果其他API提供Bid/Ask价格可以加入该column）
 
-按`Refresh Dashboard` 会刷新数据表格，计算并更新所有货币对的最新行情
-
 ---
 
-## **TAB 3 — FX Dashboard（交易视图）**
+## **TAB 3 — History & Vol**
+本页面主要展示某一货币对的历史价格走势、技术指标（TA），以及实现波动率（Realized Vol）。 用户可以从下拉菜单选择货币对，并通过两个按钮生成图表：
+* Plot Price + Vol + TA
+* Vol Surface (Realized)
 
-
----
-
-## **TAB 4 — Realized Volatility Heatmap**
-
-
----
-
-# 🧠 Core Logic (from `main.py`)
-
-## 1. `def _get_pairs_and_symbols(cfg)`
-
-**Purpose:**
-从 `config.yaml` 生成：
-
-* 所有货币对名称列表
-* API 所需的 symbol 列表
-
-**规则：**
-
-```python
-invert=False  → 使用 quote  (如 USDHKD → HKD)
-invert=True   → 使用 base   (如 AUDUSD → AUD)
-```
-
-**Example:**
-
-```python
-cfg = {
-  "pairs": [
-      {"name": "USDHKD", "base": "USD", "quote": "HKD", "invert": False},
-      {"name": "AUDUSD", "base": "AUD", "quote": "USD", "invert": True},
-  ]
-}
-
-pairs, symbols = _get_pairs_and_symbols(cfg)
-# pairs   → ["USDHKD", "AUDUSD"]
-# symbols → ["HKD", "AUD"]
-```
-
-👉 **意义**：
-API 只能根据单一 symbol 请求，例如 “HKD/USD”，而 FX 市场有的是 quote-based，有的是 base-based，因此必须在这里统一映射。
+1.`Plot Price + Vol + TA`生成四个图：
+* 现货价格 + MA20/MA60 + Bollinger Bands
+* 短端实现波动率（RV_30/60/90）从 volatility.csv 读取
+* MACD（12, 26, 9）
+  * MACD = EMA(12) – EMA(26)
+  * Signal = EMA(9)
+  * Histogram = MACD – Signal
+* RSI（Wilder’s RSI 14）
+  * avg_gain = EMA(gain, α = 1/14)
+  * avg_loss = EMA(loss, α = 1/14)
+  * RSI = 100 - (100 / (1 + RS))
+2. `Vol Surface (Realized)`用于展示和对比不同tenor的实现波动率的变化
 
 ---
-
-## 2. `def _map_symbols_to_pairs_frame(df_sym, cfg, logger=None)`
-
-API 返回：
-
-```
-{
-  "rates": {
-      "HKD": 7.81,
-      "JPY": 151.20,
-      "AUD": 1.52,
-      ...
-  }
-}
-```
-
-但 GUI 和 Dashboard 需要的是 **pair-level prices**，例如：
-
-* `USDHKD = 7.81`
-* `AUDUSD = 1 / 1.52 = 0.6579`
-
-此函数：
-
-1. 根据 `invert` 决定是否对价格取倒数
-2. 按货币对名称构建统一的 DataFrame
-3. 作为 intraday.csv or dashboard 数据源
-
-**Effectively:**
-👉 把 “API symbol → 真正的 pair price” 做标准化。
-
+## **TAB 4 — Correlation**
+该页面用于计算不同外汇货币对之间的相关性，包括：两两货币对之间30/60/90天的Rolling Correlation和所有货币对的Correlation Heatmap。
+数据来自daily.csv，如果没有点击`Fetch 5Y History` / `Daily Fixing Update`），则所有图表均无法显示。
 ---
 
-## ### 3. Technical Indicators
-
-来自 `main.py`：
-
-### **Bollinger Bands**
-
-```python
-ma = px.rolling(window).mean()
-std = px.rolling(window).std()
-upper = ma + num_std * std
-lower = ma - num_std * std
-```
-
-### **MACD**
-
-* 快速 EMA（12）
-* 慢速 EMA（26）
-* signal（9）
-
-### **Wilder's RSI (14-day)**
-
-* Gain = positive diff
-* Loss = negative diff
-* 计算 RS → RSI
-
-👉 三个指标用于 **dashboard 分析 FX momentum & volatility**。
-
----
-
-# 🖥 GUI Overview (`gui.py`)
-
-GUI 分为四个主要 Tab，每个对应交易员日常需要的一个操作面板。
-
----
-
-## **TAB 1 — Data：Intraday Snapshot（实时数据抓取）**
-
-用途：
-
-* 从 API 抓取最新价格
-* 写入 `intraday.csv`
-* 自动清洗并格式化为统一结构
-
-好处：
-✔ 跟 Bloomberg 类似的实时性
-✔ 每 120 秒自动刷新
-✔ 可以用于 Dashboard 的最新价格更新
-
----
-
-## **TAB 2 — Daily Loader（历史数据清洗）**
-
-逻辑：
-
-* 读取 `daily.csv`
-* 格式化日期，并按时间排序
-* 自动删除 Unnamed 列
-* **只保留 config.yaml 中的 pairs**（避免历史文件污染）
-
-用途：
-
-✔ 用于绘制指标图
-✔ 用于 realized volatility heatmap
-✔ 保持历史数据干净规范
-
----
-
-## **TAB 3 — FX Dashboard（交易视图）**
-
-显示：
-* Pair
-* Last price refreshed (from intraday.csv)
-* Previous' fixing
-* Pips Change (fixing - intraday)
-  * Metals: ×10
-  * JPY pairs: ×100
-  * Non-JPY: ×10000
-* % Change
-* Bid / Ask（如果其他API可以有Bid/Ask价格可以加入该column）
-
----
-
-## **TAB 4 — Realized Volatility Heatmap**
-
-支持周期： RV 30/60/90/180/250
-
-用途：
-✔ 比较不同时间窗口的波动率
-✔ 识别高波动 / 低波动 regime
-✔ 与 implied vol 做交叉检验
-用 30/60/90 来画历史图,Vol Surface 使用 30/60/90/180/250
----
-
-# 🌐 Choosing the Best Data Source（API 选型解释）
-
----
 ## 🔍 Considered Data Sources
 
 | Provider                             | 优点                                | 缺点               |
@@ -264,29 +114,12 @@ GUI 分为四个主要 Tab，每个对应交易员日常需要的一个操作面
 | **Apilayer Exchange Rates Data API** | ✔ 真实汇率与 Bloomberg 对标差距较小✔ 免费层可用 ✔ 支持172种货币 & 贵金属 ✔ 免费额度高（100条/天），更新频率相对较快（15min/次） | 贵金属没有XPTUSD报价，货币对都要USD Base，花钱才能高频    |
 
 ---
-# ▶️ Running the App
-```bash
-python main.py
-```
----
 
-# 🧭 Example Workflow
-
+# 🧭 Workflow
 1. **Load Daily 数据**
 2. **Run Intraday Snapshot** 获取实时数据
 3. 查看 **Dashboard** 判断市场变化
 4. 查看 **Heatmap** 判断波动率 regime
-5. 根据需要做 hedge / delta 调整 / 入场
+5. 根据需要做 hedge或delta 调整 
 
----
-
-# 📌 Future Plans
-
-* Websocket real-time feeds
-* Forward Points Aggregator
-* Multi-bank quote comparison
-* SQLite tick database
-* Implied Vol surface building
-
----
 
