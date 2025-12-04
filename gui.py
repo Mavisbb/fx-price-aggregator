@@ -232,27 +232,29 @@ class FXApp(tk.Tk):
             messagebox.showerror("Error", "intraday.csv missing or empty.")
             return
 
-        # Clear old rows
+        # 清空表格
         for row in self.table.get_children():
             self.table.delete(row)
 
-        # 用昨天 fixing 来对比
-        last_fix = df_daily.iloc[-1]
+        # 跟昨天fixing来对比
+        if len(df_daily) >= 2:
+            prev_fix = df_daily.iloc[-2]
+        else:
+            prev_fix = df_daily.iloc[-1]
 
         for pair in df_daily.columns:
             if pair not in df_intr.index:
-                continue  # intraday 不一定会更新 all pairs
-
-            last_price = df_intr.loc[pair, "price"]
-            prev_price = last_fix[pair]
-
-            if pd.isna(prev_price):
                 continue
 
-            change = last_price - prev_price
-            pip_change = self._compute_pips(pair, change)
+            last_price = df_intr.loc[pair, "price"]
+            fix_price = prev_fix[pair]
 
-            pct_change = (change / prev_price) * 100 if prev_price != 0 else 0
+            if pd.isna(fix_price):
+                continue
+
+            change = last_price - fix_price
+            pip_change = self._compute_pips(pair, change)
+            pct_change = (change / fix_price) * 100 if fix_price != 0 else 0
 
             self.table.insert(
                 "",
@@ -260,7 +262,7 @@ class FXApp(tk.Tk):
                 values=(
                     pair,
                     f"{last_price:.6f}",
-                    f"{prev_price:.6f}",
+                    f"{fix_price:.6f}",
                     f"{pip_change:.1f}",
                     f"{pct_change:.2f}%"
                 ),
