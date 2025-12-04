@@ -93,6 +93,7 @@ Dashboard用于展示最新货币对市场价格与昨天的fixing作对比。�
 * RSI（Wilder’s RSI 14）
   * avg_gain = EMA(gain, α = 1/14)
   * avg_loss = EMA(loss, α = 1/14)
+  * RS = avg_gain / avg_loss
   * RSI = 100 - (100 / (1 + RS))
 2. `Vol Surface (Realized)`用于展示和对比不同tenor的实现波动率的变化
 
