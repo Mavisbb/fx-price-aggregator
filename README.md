@@ -99,7 +99,8 @@ Dashboard用于展示最新货币对市场价格与昨天的fixing作对比。�
 ---
 ## **TAB 4 — Correlation**
 该页面用于计算不同外汇货币对之间的相关性，包括：两两货币对之间30/60/90天的Rolling Correlation和所有货币对的Correlation Heatmap。
-数据来自daily.csv，如果没有点击`Fetch 5Y History` / `Daily Fixing Update`），则所有图表均无法显示。
+数据来自daily.csv，如果没有点击`Fetch 5Y History` / `Daily Fixing Update`，则所有图表均无法显示。
+
 ---
 
 ## 🔍 Considered Data Sources
